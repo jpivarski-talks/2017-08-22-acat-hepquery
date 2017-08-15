@@ -202,140 +202,140 @@ Apache Drill comes closest to fitting our needs, but it's
 \end{center}
 \end{frame}
 
-%% \begin{frame}{The core issue}
+\begin{frame}{The core issue}
+\vspace{0.5 cm}
+SQL-like query engines are optimized for what we'd call a ``flat ntuple analysis''--- rectangular table of numbers, sliced, filtered, aggregated, and joined.
+
+\vspace{0.5 cm}
+\uncover<2->{Only late-stage HEP analysis could fit this model, not AOD.}
+
+\vspace{0.5 cm}
+\uncover<3->{General physics analysis requires arbitrary-length lists of objects: e.g.\ events containing jets containing tracks containing hits.}
+
+\vspace{0.5 cm}
+\uncover<4->{But frameworks that create physics objects at runtime would be slow to process as queries.}
+\end{frame}
+
+\begin{frame}{Illustration}
+\vspace{0.5 cm}
+
+\large \textcolor{darkblue}{\underline{Query: fill a histogram with jet $p_T$ of all jets.}}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.5}
+\small
+\begin{tabular}{r l}
+\large 0.018 MHz & \large custom CMSSW EDAnalyzer (single-threaded C++) \\
+\uncover<5->{\large 0.029 MHz & \large load all 95 jet branches in ROOT} \\
+\uncover<4->{\large 2.8 MHz & \large load jet $p_T$ branch (and no others) in ROOT} \\
+\uncover<3->{\large 12 MHz & \large allocate C++ objects on heap, fill, delete} \\
+\uncover<2->{\large 31 MHz & \large allocate C++ objects on stack, fill histogram} \\
+\large 250 MHz & \large minimal ``for'' loop (single-threaded C) \\
+\end{tabular}
+\end{center}
+
+\uncover<6->{\large \textcolor{darkblue}{Four orders of magnitude in performance lost to provide an object-oriented view of the jets, with all attributes filled.}}
+\end{frame}
+
+\begin{frame}[fragile]{Alternative}
+\vspace{0.5 cm}
+Instead of deserializing data into objects, translate the code into loops over raw arrays.
+
+\vspace{0.25 cm}
+\textcolor{darkblue}{\underline{Turn ``event'' and ``jet'' objects:}}
+
+\scriptsize
+\begin{minted}{python}
+histogram = numpy.zeros(100, dtype=numpy.int32)
+
+def fcn(roottree, histogram):
+    for event in roottree:
+        for jet in event.jets:
+            bin = int(jet.pt)
+            if bin >= 0 and bin < 100:
+                histogram[bin] += 1
+\end{minted}
+
+\vspace{0.25 cm}
+\textcolor{darkblue}{\normalsize \underline{into indexes over ``events'', ``jets'', ``jetpt'' arrays:}}
+
+\scriptsize
+\begin{minted}{c++}
+void fcn(int* events, int* jets, float* jetptdata, int* histogram) {
+    int event, jet;
+    for (event = 0;  event < events[1];  event++)
+        for (jet = jets[event];  jet < jets[event + 1];  jet++) {
+            int bin = (int)jetptdata[jet];
+            if (bin >= 0  &&  bin < 100)
+                histogram[bin] += 1;
+}}
+\end{minted}
+
+\end{frame}
+
+\begin{frame}[fragile]{Result}
+\vspace{0.5 cm}
+\hspace{-0.75 cm}\begin{minipage}{\linewidth}\scriptsize
+\begin{Verbatim}[commandchars=\\\{\}]
+ 97% done; reading: 262.094 MB/s, computing: 66.308 MHz (...TeV_2_7.root)
+ 98% done; reading: 337.129 MB/s, computing: 67.579 MHz (...TeV_2_8.root)
+100% done; reading: 232.974 MB/s, computing: 67.133 MHz (...TeV_2_9.root)
+========================================================================================
+total time spent compiling: 0.353 sec
+             opening files: 0.078 sec
+              reading data: 0.238 sec (46.302 MB --> 194.745 MB/s)
+                 computing: 0.061 sec (5389283 entries --> \textcolor{red}{87.645 MHz})
+
+      from start to finish: 0.734 sec
+\end{Verbatim}
+\end{minipage}
+
+\vspace{1 cm}
+Object-oriented calculations can be performed at \textcolor{red}{$\mathcal{O}(\mbox{10--100 MHz})$}.
+
+\vspace{0.25 cm}
+Disk reads and RAM strides are more sequential than if they were chasing pointers.
+
+\vspace{0.25 cm}
+No need for ``schema evolution'' because data \mbox{never get deserialized.\hspace{-0.25 cm}} Different versions of a dataset can share column arrays, reducing disk space of revisions. Popular columns should be cached.
+\end{frame}
+
+%% \begin{frame}[fragile]{More complex example}
 %% \vspace{0.5 cm}
-%% SQL-like query engines are optimized for what we'd call a ``flat ntuple analysis''--- rectangular table of numbers, sliced, filtered, aggregated, and joined.
-
-%% \vspace{0.5 cm}
-%% \uncover<2->{Only late-stage HEP analysis could fit this model, not AOD.}
-
-%% \vspace{0.5 cm}
-%% \uncover<3->{General physics analysis requires arbitrary-length lists of objects: e.g.\ events containing jets containing tracks containing hits.}
-
-%% \vspace{0.5 cm}
-%% \uncover<4->{But frameworks that create physics objects at runtime would be slow to process as queries.}
-%% \end{frame}
-
-%% \begin{frame}{Illustration}
-%% \vspace{0.5 cm}
-
-%% \large \textcolor{darkblue}{\underline{Query: fill a histogram with jet $p_T$ of all jets.}}
-
-%% \begin{center}
-%% \renewcommand{\arraystretch}{1.5}
-%% \small
-%% \begin{tabular}{r l}
-%% \large 0.018 MHz & \large custom CMSSW EDAnalyzer (single-threaded C++) \\
-%% \uncover<5->{\large 0.029 MHz & \large load all 95 jet branches in ROOT} \\
-%% \uncover<4->{\large 2.8 MHz & \large load jet $p_T$ branch (and no others) in ROOT} \\
-%% \uncover<3->{\large 12 MHz & \large allocate C++ objects on heap, fill, delete} \\
-%% \uncover<2->{\large 31 MHz & \large allocate C++ objects on stack, fill histogram} \\
-%% \large 250 MHz & \large minimal ``for'' loop (single-threaded C) \\
-%% \end{tabular}
-%% \end{center}
-
-%% \uncover<6->{\large \textcolor{darkblue}{Four orders of magnitude in performance lost to provide an object-oriented view of the jets, with all attributes filled.}}
-%% \end{frame}
-
-%% \begin{frame}[fragile]{Alternative}
-%% \vspace{0.5 cm}
-%% Instead of deserializing data into objects, translate the code into loops over raw arrays.
+%% This straightforward nested loop would be very difficult to express in SQL.
 
 %% \vspace{0.25 cm}
-%% \textcolor{darkblue}{\underline{Turn ``event'' and ``jet'' objects:}}
+%% The ``event'', ``mu1'', and ``mu2'' objects are replaced with array lookups at runtime.
 
 %% \scriptsize
 %% \begin{minted}{python}
-%% histogram = numpy.zeros(100, dtype=numpy.int32)
-
-%% def fcn(roottree, histogram):
-%%     for event in roottree:
-%%         for jet in event.jets:
-%%             bin = int(jet.pt)
-%%             if bin >= 0 and bin < 100:
-%%                 histogram[bin] += 1
+%% for event in roottree:
+%%     for i in range(len(event.muons)):      # don't repeat muons!
+%%         for j in range(i + 1, len(event.muons)):
+%%             mu1 = event.muons[i]
+%%             mu2 = event.muons[j]
+%%             mass = sqrt(2 * mu1.pt * mu2.pt *
+%%                         (cosh(mu1.eta - mu2.eta) - cos(mu1.phi - mu2.phi)))
 %% \end{minted}
-
-%% \vspace{0.25 cm}
-%% \textcolor{darkblue}{\normalsize \underline{into indexes over ``events'', ``jets'', ``jetpt'' arrays:}}
-
-%% \scriptsize
-%% \begin{minted}{c++}
-%% void fcn(int* events, int* jets, float* jetptdata, int* histogram) {
-%%     int event, jet;
-%%     for (event = 0;  event < events[1];  event++)
-%%         for (jet = jets[event];  jet < jets[event + 1];  jet++) {
-%%             int bin = (int)jetptdata[jet];
-%%             if (bin >= 0  &&  bin < 100)
-%%                 histogram[bin] += 1;
-%% }}
-%% \end{minted}
-
 %% \end{frame}
 
-%% \begin{frame}[fragile]{Result}
-%% \vspace{0.5 cm}
-%% \hspace{-0.75 cm}\begin{minipage}{\linewidth}\scriptsize
-%% \begin{Verbatim}[commandchars=\\\{\}]
-%%  97% done; reading: 262.094 MB/s, computing: 66.308 MHz (...TeV_2_7.root)
-%%  98% done; reading: 337.129 MB/s, computing: 67.579 MHz (...TeV_2_8.root)
-%% 100% done; reading: 232.974 MB/s, computing: 67.133 MHz (...TeV_2_9.root)
-%% ========================================================================================
-%% total time spent compiling: 0.353 sec
-%%              opening files: 0.078 sec
-%%               reading data: 0.238 sec (46.302 MB --> 194.745 MB/s)
-%%                  computing: 0.061 sec (5389283 entries --> \textcolor{red}{87.645 MHz})
+\begin{frame}{You can try this out}
+Our PLUR library\footnotemark[1] puts {\bf P}rimitive, {\bf L}ist, {\bf U}nion, and {\bf R}ecord data into flat arrays and translates Python code to do array lookups.
 
-%%       from start to finish: 0.734 sec
-%% \end{Verbatim}
-%% \end{minipage}
+\vspace{0.5 cm}
+The translated Python is then compiled by Numba\footnotemark[2] (Python compiler for numerical algorithms) into fast bytecode.
 
-%% \vspace{1 cm}
-%% Object-oriented calculations can be performed at \textcolor{red}{$\mathcal{O}(\mbox{10--100 MHz})$}.
+\vspace{0.5 cm}
+Our contributions to ROOT\footnotemark[3] allow ROOT TBranch data to be rapidly viewed as Numpy arrays ($10\times$ faster than root\_numpy).
 
-%% \vspace{0.25 cm}
-%% Disk reads and RAM strides are more sequential than if they were chasing pointers.
+\vspace{0.5 cm}
+This is being gathered into a HEPQuery application\footnotemark[4] to provide a query service. See the READMEs for more realistic examples.
 
-%% \vspace{0.25 cm}
-%% No need for ``schema evolution'' because data \mbox{never get deserialized.\hspace{-0.25 cm}} Different versions of a dataset can share column arrays, reducing disk space of revisions. Popular columns should be cached.
-%% \end{frame}
-
-%% %% \begin{frame}[fragile]{More complex example}
-%% %% \vspace{0.5 cm}
-%% %% This straightforward nested loop would be very difficult to express in SQL.
-
-%% %% \vspace{0.25 cm}
-%% %% The ``event'', ``mu1'', and ``mu2'' objects are replaced with array lookups at runtime.
-
-%% %% \scriptsize
-%% %% \begin{minted}{python}
-%% %% for event in roottree:
-%% %%     for i in range(len(event.muons)):      # don't repeat muons!
-%% %%         for j in range(i + 1, len(event.muons)):
-%% %%             mu1 = event.muons[i]
-%% %%             mu2 = event.muons[j]
-%% %%             mass = sqrt(2 * mu1.pt * mu2.pt *
-%% %%                         (cosh(mu1.eta - mu2.eta) - cos(mu1.phi - mu2.phi)))
-%% %% \end{minted}
-%% %% \end{frame}
-
-%% \begin{frame}{You can try this out}
-%% Our PLUR library\footnotemark[1] puts {\bf P}rimitive, {\bf L}ist, {\bf U}nion, and {\bf R}ecord data into flat arrays and translates Python code to do array lookups.
-
-%% \vspace{0.5 cm}
-%% The translated Python is then compiled by Numba\footnotemark[2] (Python compiler for numerical algorithms) into fast bytecode.
-
-%% \vspace{0.5 cm}
-%% Our contributions to ROOT\footnotemark[3] allow ROOT TBranch data to be rapidly viewed as Numpy arrays ($10\times$ faster than root\_numpy).
-
-%% \vspace{0.5 cm}
-%% This is being gathered into a HEPQuery application\footnotemark[4] to provide a query service. See the READMEs for more realistic examples.
-
-%% \footnotetext[1]{\textcolor{blue}{\url{https://github.com/diana-hep/plur}}}
-%% \footnotetext[2]{\textcolor{blue}{\url{http://numba.pydata.org/}}}
-%% \footnotetext[3]{\textcolor{blue}{\url{https://jpivarski.github.io/devlog-tbranch-numpy/}}}
-%% \footnotetext[4]{\textcolor{blue}{\url{https://github.com/diana-hep/hepquery/}}}
-%% \end{frame}
+\footnotetext[1]{\textcolor{blue}{\url{https://github.com/diana-hep/plur}}}
+\footnotetext[2]{\textcolor{blue}{\url{http://numba.pydata.org/}}}
+\footnotetext[3]{\textcolor{blue}{\url{https://jpivarski.github.io/devlog-tbranch-numpy/}}}
+\footnotetext[4]{\textcolor{blue}{\url{https://github.com/diana-hep/hepquery/}}}
+\end{frame}
 
 \begin{frame}
 \begin{center}
@@ -401,7 +401,39 @@ Thanat Jatuphattharachat (CERN summer student) project: explore third party tool
 \end{center}
 \end{frame}
 
+\begin{frame}{Femtocode}
+\vspace{0.5 cm}
 
+Femtocode is a mini-language based on Python, but with sufficient limitations to allow SQL-like query planning.
+
+\vspace{0.25 cm}
+\begin{itemize}\setlength{\itemsep}{0.25 cm}
+\item Dependent type-checking to ensure that every query completes without runtime errors.
+\item Automated vectorization/GPU translation by controlling the loop structure.
+\item Integrates database-style indexing with processing.
+\end{itemize}
+
+\vspace{0.25 cm}
+But these are all ``2.0'' features.
+\end{frame}
+
+\begin{frame}
+\begin{center}
+\huge \textcolor{darkblue}{Conclusions}
+\end{center}
+\end{frame}
+
+\begin{frame}{Conclusions!}
+\vspace{0.5 cm}
+
+\begin{itemize}\setlength{\itemsep}{0.5 cm}
+\item AOD-to-plot in seconds {\it is possible.}
+\item They're doing this in industry (but\ldots\ SQL and Java).
+\item Python-based queries can be computed at single-threaded rates of 10--100~MHz by translating code, rather than deserializing data.
+\item Columnar data granularity has useful consequences.
+\item Prototyping distributed architecture, relying on third-party components wherever possible.
+\end{itemize}
+\end{frame}
 
 %% the dream: motivation
 
