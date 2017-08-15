@@ -110,12 +110,12 @@ Ideally, we'd want to turn AOD directly into plots, quickly enough for interacti
 \item Users would plot the data before doing anything else.
 
 \vspace{0.2 cm}
-\textcolor{gray}{\normalsize (Skims for maximum likelihood fits, etc.\ are still possible, but would be more streamlined {\it after} exploratory plotting.)}
+\textcolor{gray}{\normalsize (Skims for maximum likelihood fits, etc.\ should be possible, but would be more streamlined {\it after} exploratory plotting.)}
 
 \vspace{-0.2 cm}
 \item Focus on physics and statistical issues, not data handling.
-\item Facilitates provenance and analysis reproducibility.
-\item CPU, disk, and memory would be more efficiently used.
+\item Centralization facilitates provenance and reproducibility.
+\item Shared CPU, disk, and memory is more efficient.
 \item Small institutions would not be ``priced out'' of analysis for lack of resources to copy and locally process the data.
 \end{itemize}
 \end{frame}
@@ -144,7 +144,7 @@ Apache Drill comes closest to fitting our needs, but it's
 \begin{itemize}
 \item SQL (not expressive enough for HEP)
 \item Java (hard to link to HEP software)
-\item more suited to ``flat ntuple'' analysis.
+\item more suited to ``flat ntuple'' analysis (see next slides).
 \end{itemize}
 \end{uncoverenv}
 
@@ -190,7 +190,7 @@ Apache Drill comes closest to fitting our needs, but it's
 
 \vspace{0.3 cm}
 \begin{itemize}\setlength{\itemsep}{0.3 cm}
-\item {\bf fast execution} on {\it nested}, non-flat data
+\item {\bf fast execution} on {\it nested, non-flat} data
 \item {\bf distributed processing:} caching and data locality, uneven and changing dataset popularity, histogramming
 \item \sout{{\bf HEP-specific query language}} (in the abstract for this talk, but I'm going to focus more on the above)
 \end{itemize}
@@ -242,7 +242,7 @@ SQL-like query engines are optimized for what we'd call a ``flat ntuple analysis
 Instead of deserializing data into objects, translate the code into loops over raw arrays.
 
 \vspace{0.25 cm}
-\textcolor{darkblue}{Turn ``event'' and ``jet'' objects:}
+\textcolor{darkblue}{\underline{Turn ``event'' and ``jet'' objects:}}
 
 \scriptsize
 \begin{minted}{python}
@@ -257,7 +257,7 @@ def fcn(roottree, histogram):
 \end{minted}
 
 \vspace{0.25 cm}
-\textcolor{darkblue}{\normalsize into indexes of ``eventoffset'', ``jetoffset'', ``jetptdata'' arrays:}
+\textcolor{darkblue}{\normalsize \underline{into indexes over ``eventoffset'', ``jetoffset'', ``jetptdata'' arrays:}}
 
 \scriptsize
 \begin{minted}{python}
@@ -272,6 +272,7 @@ def fcn(eventoffset, jetoffset, jetptdata, histogram):
 \end{frame}
 
 \begin{frame}[fragile]{Result}
+\vspace{0.5 cm}
 \hspace{-0.75 cm}\begin{minipage}{\linewidth}\scriptsize
 \begin{Verbatim}[commandchars=\\\{\}]
  97% done; reading: 262.094 MB/s, computing: 66.308 MHz (...TeV_2_7.root)
@@ -288,13 +289,13 @@ total time spent compiling: 0.353 sec
 \end{minipage}
 
 \vspace{1 cm}
-Object oriented processes can be computed at \textcolor{red}{$\mathcal{O}(\mbox{10--100 MHz})$}.
+Object-oriented processes can be computed at \textcolor{red}{$\mathcal{O}(\mbox{10--100 MHz})$}.
 
 \vspace{0.25 cm}
-Disk reads and RAM strides are more sequential.
+Disk reads and RAM strides are more sequential than if they were chasing pointers.
 
 \vspace{0.25 cm}
-Only columns used in the code are actually loaded: an object's attributes only exist if they're used.
+No ``schema evolution'' because data never get deserialized. Different versions of a dataset can share column arrays, reducing disk space cost of revisions. Popular columns should be cached.
 \end{frame}
 
 %% \begin{frame}[fragile]{More complex example}
@@ -316,17 +317,17 @@ Only columns used in the code are actually loaded: an object's attributes only e
 %% \end{minted}
 %% \end{frame}
 
-\begin{frame}{How it fits together}
+\begin{frame}{Where to find the code}
 Our PLUR library\footnotemark[1] puts {\bf P}rimitive, {\bf L}ist, {\bf U}nion, and {\bf R}ecord data into flat arrays and translates Python code to do array lookups.
 
 \vspace{0.5 cm}
-The translated Python can then be compiled by Numba\footnotemark[2] (Python compiler for numerical algorithms) into fast bytecode.
+The translated Python is then compiled by Numba\footnotemark[2] (Python compiler for numerical algorithms) into fast bytecode.
 
 \vspace{0.5 cm}
-Our contributions to ROOT\footnotemark[3] allow ROOT TBranch data to be rapidly viewed as Numpy arrays.
+Our contributions to ROOT\footnotemark[3] allow ROOT TBranch data to be rapidly viewed as Numpy arrays ($10\times$ faster than root\_numpy).
 
 \vspace{0.5 cm}
-This is being gathered into a HEPQuery application\footnotemark[4] to provide a query service. See README for more complex examples.
+This is being gathered into a HEPQuery application\footnotemark[4] to provide a query service. See the READMEs for more realistic examples.
 
 \footnotetext[1]{\textcolor{blue}{\url{https://github.com/diana-hep/plur}}}
 \footnotetext[2]{\textcolor{blue}{\url{http://numba.pydata.org/}}}
