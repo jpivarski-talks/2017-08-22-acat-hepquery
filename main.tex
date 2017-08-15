@@ -85,4 +85,74 @@
 \begin{frame}{First page}
 \end{frame}
 
+%% the dream: motivation
+
+%% existence proof: Drill (and others)
+
+%%    * lightweight parallelization
+%%    * columnar data
+%%    * distributed, in-memory caching
+%%    * JIT compilation, vectorization
+%%    * data stay on server, only summaries come down
+
+%% pieces we would need: (1) fast execution (2) distributed processing (3) \sout{query language} (in abstract, but focus has turned more to the above)
+
+%% fast execution
+
+%% not better--- best (microbenchmarks to define goal; usefulness of knowing that {\it no} improvement is possible)
+
+%%    * running through data in CMSSW (just an example) vs an HPC-like minimal for loop in C: rate and data touched
+%%    * reflects difference in design: CMSSW was {\it meant} to heavy processing on a lot of data per event (reconstruction);
+%%      but this makes it a poor choice for lightweight analysis jobs
+%%    * analysts mostly use it to dump data to skims, but the slower the framework is per event, the more that needs to be dumped to make it worthwhile (rich get richer)
+%%    * lightweight process without persistent skim is a different ``local minimum in ease-of-use space''
+
+%% microbenchmarks are in C, but Python + Numba is also an option: Python is good for informal scripting, developing algorithms quickly, and Numba compiles it with LLVM; runtime is indistinguishable
+
+%% the problem with this is that most of what we want to do with our data doesn't look like simple for loops: we want to pair up particle objects, compute masses, isolations, match reco & MC, etc.; creating objects at runtime is expensive and brings us back to frameworks
+
+%% alternative: instead of making objects at runtime, transform object-oriented code into array manipulation (EXAMPLE)
+
+%% this is formal and general: start with type system and propagate object types through code like a compiler pass, then hand transformed code to Numba for optimization
+
+%%    * P, L, U, R (website)
+
+%% data are in contiguous columnar arrays, like ROOT TBranches, but remain in arrays at runtime
+
+%%    * format allows for random access (EXAMPLE)
+%%    * I'm adding TBranch --> Numpy to ROOT to do this on-the-fly (ROOT 6.12)
+%%    * but also caching mechanism for more speed and flexibility: the new granularity is not files but columns
+
+%% it's fast, but does it parallelize? yes, up to 2 GB/s per machine (memory bus becomes the bottleneck; plot shows microbenchmark on KNL to avoid memory bus and beat the bottleneck)
+
+%% distributed processing
+
+%% submitting a query and getting back an {\it aggregation} (histogram) is more complex than batch submission
+
+%%    * something in the system must collect partial results from parallel subtasks and add them up
+%%    * unavoidable state in the system
+
+%% look at prior art: Hadoop, Spark, and Drill all do this, all are based on Apache Zookeeper
+
+%%    * Zookeeper: distributed, fault-tolerant key-value store for rapidly changing configuration
+%%    * ``configuration'' == who's working on what subtask, who's done, which need to be retried, etc.
+
+%% current design (J.Thanat, summer student):
+
+%%    * Zookeeper maintains pool of unfinished subtasks
+%%    * workers attempt to claim ownership, preferably if they have input columns in cache (for data locality), but will take anything if they're not busy (to elastically duplicate cache for popular datasets)
+%%    * we don't handle {\it any} mutable state ourselves (except volatile cache), no single point of failure (more lessons from industry)
+
+%% query language
+
+%%    * Femtocode is a mini-language based on Python, but with sufficient limitations to allow SQL-like query planning, automated vectorization/GPU translation, and database-style indexing
+%%    * but these are all ``2.0'' features
+
+%% conclusions
+
+%%    * AOD-to-plot in seconds {\it is possible}
+%%    * they're doing this in industry (but\ldots\ SQL and Java)
+%%    * single-threaded kernel is operating in the MHz range (on ``Python'' code)
+%%    * prototyping distributed architecture
+
 \end{document}
