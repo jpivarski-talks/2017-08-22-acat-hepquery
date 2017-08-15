@@ -82,7 +82,17 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\begin{frame}{First page}
+\begin{frame}{The dream}
+\vspace{0.5 cm}
+LHC experiments are pretty efficient at data handling up to Analysis Object Datasets (AODs), but AODs to final plots is a wild west of hacked scripts, unnecessary copying, wasted resources.
+
+\vspace{0.2 cm}
+\only<1>{\includegraphics[width=\linewidth]{stack-of-files.png}}\only<2>{\includegraphics[width=\linewidth]{stack-of-files-2.png}}
+
+\vspace{0.5 cm}
+\begin{uncoverenv}<2>
+Ideally, we'd want to turn AOD directly into plots, quickly enough for interactive analysis (seconds per scan at most).
+\end{uncoverenv}
 \end{frame}
 
 %% the dream: motivation
