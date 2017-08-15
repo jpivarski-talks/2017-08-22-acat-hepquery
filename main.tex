@@ -20,6 +20,8 @@
 \usepackage{array}
 \usepackage{bold-extra}
 \usepackage{minted}
+\usepackage{ulem}
+\usepackage{xpatch}
 
 \xdefinecolor{darkblue}{rgb}{0.1,0.1,0.7}
 \xdefinecolor{darkgreen}{rgb}{0,0.5,0}
@@ -65,6 +67,11 @@
 \institute{Princeton University -- DIANA}
 \date{August 22, 2017}
 
+\xpatchcmd{\sout}
+  {\bgroup}
+  {\bgroup\def\ULthickness{1.5 pt}}
+  {}{}
+
 \begin{document}
 
 \logo{\pgfputat{\pgfxy(0.11, 8)}{\pgfbox[right,base]{\tikz{\filldraw[fill=dianablue, draw=none] (0 cm, 0 cm) rectangle (50 cm, 1 cm);}}}\pgfputat{\pgfxy(0.11, -0.6)}{\pgfbox[right,base]{\tikz{\filldraw[fill=dianablue, draw=none] (0 cm, 0 cm) rectangle (50 cm, 1 cm);}\includegraphics[height=0.99 cm]{diana-hep-logo.png}\tikz{\filldraw[fill=dianablue, draw=none] (0 cm, 0 cm) rectangle (4.9 cm, 1 cm);}}}}
@@ -84,7 +91,7 @@
 
 \begin{frame}{The dream}
 \vspace{0.5 cm}
-LHC experiments are pretty efficient at data handling up to Analysis Object Datasets (AODs), but AODs to final plots is a wild west of hacked scripts, unnecessary copying, wasted resources.
+LHC experiments are pretty efficient at data handling up to Analysis Object Datasets (AODs), but AODs to final plots is a wild west of hacky scripts, unnecessary copying, and wasted resources.
 
 \vspace{0.2 cm}
 \only<1>{\includegraphics[width=\linewidth]{stack-of-files.png}}\only<2>{\includegraphics[width=\linewidth]{stack-of-files-2.png}}
@@ -94,6 +101,181 @@ LHC experiments are pretty efficient at data handling up to Analysis Object Data
 Ideally, we'd want to turn AOD directly into plots, quickly enough for interactive analysis (seconds per scan at most).
 \end{uncoverenv}
 \end{frame}
+
+\begin{frame}{Motivation}
+\large
+\vspace{0.5 cm}
+\begin{itemize}\setlength{\itemsep}{0.5 cm}
+\item Users would plot the data before doing anything else.
+
+\vspace{0.2 cm}
+\textcolor{gray}{\normalsize (Skims for maximum likelihood fits, etc.\ are still possible, but would be more streamlined {\it after} exploratory plotting.)}
+
+\vspace{-0.2 cm}
+\item Focus on physics and statistical issues, not data handling.
+\item Facilitates provenance and analysis reproducibility.
+\item CPU, disk, and memory would be more efficiently used.
+\item Small institutions would not be ``priced out'' of analysis for lack of resources to copy and locally process the data.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Existence proof}
+
+In some industries, it is possible to ``process petabyes of data and trillions of records in seconds\footnotemark[1].''
+
+\vspace{0.2 cm}
+In fact, there are many low-latency query server engines available, mostly open source.
+
+\vspace{0.5 cm}
+\mbox{\hspace{-1 cm}
+\includegraphics[height=1.23 cm]{drill-logo.png}
+\includegraphics[height=1.23 cm]{impala-logo.png}
+\includegraphics[height=1.23 cm]{kudu-logo.png}
+\includegraphics[height=1.23 cm]{ibis-logo.png}
+\includegraphics[height=1.23 cm]{hawk-logo.png}
+\includegraphics[height=1.23 cm]{dremel-logo.png}
+\includegraphics[height=1.23 cm]{bigquery-logo.png}
+\includegraphics[height=1.23 cm]{sparksql-logo.png}}
+
+\vspace{0.5 cm}
+\begin{uncoverenv}<2>
+Apache Drill comes closest to fitting our needs, but it's
+\begin{itemize}
+\item SQL (not expressive enough for HEP)
+\item Java (hard to link to HEP software)
+\item more suited to ``flat ntuple'' analysis.
+\end{itemize}
+\end{uncoverenv}
+
+\footnotetext[1]{\textcolor{blue}{\url{https://wiki.apache.org/incubator/DrillProposal}}}
+\end{frame}
+
+%% \begin{frame}{Existence proof}
+%% \vspace{0.5 cm}
+%% \mbox{ } \hfill \includegraphics[height=2 cm]{drill-logo.png} \hfill \mbox{ }
+
+%% \begin{columns}
+%% \column{0.5\linewidth}
+%% \textcolor{darkblue}{\large \underline{What's right}}
+
+%% \begin{itemize}
+%% \item lightweight parallelization
+%% \item columnar data
+%% \item just-in-time (JIT) compilation, vectorization
+%% \item data stay on the server, only summaries come down
+%% \item extensible: plug-in architecture
+%% \end{itemize}
+
+%% \column{0.5\linewidth}
+%% \textcolor{darkblue}{\large \underline{What's wrong}}
+
+%% \begin{itemize}
+%% \item SQL isn't expressive enough for physics analysis
+%% \item Drill's query planning optimizations are based on SQL's structure
+%% \item Drill's native Java is foreign to most of our ecosystem in HEP
+%% \end{itemize}
+
+%% \end{columns}
+
+%% \vspace{0.5 cm}
+%% \end{frame}
+
+%% \vspace{0.5 cm}
+%% Either extend every part of Drill or build a query system with a similar architecture using the same tools (e.g.\ Zookeeper).
+
+\begin{frame}{Toward a query system for HEP}
+\vspace{0.5 cm}
+\large This talk is about what we would need to make (or alter) a query system for HEP analysis:
+
+\vspace{0.3 cm}
+\begin{itemize}\setlength{\itemsep}{0.3 cm}
+\item {\bf fast execution} on {\it nested}, non-flat data
+\item {\bf distributed processing:} caching and data locality, uneven and changing dataset popularity, histogramming
+\item \sout{{\bf HEP-specific query language}} (in the abstract for this talk, but I'm going to focus more on the above)
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\begin{center}
+\huge \textcolor{darkblue}{Fast execution}
+\end{center}
+\end{frame}
+
+\begin{frame}{The core issue}
+\vspace{0.5 cm}
+SQL-like query engines are optimized for what we'd call a ``flat ntuple analysis''--- rectangular table of numbers, sliced, filtered, aggregated, and joined.
+
+\vspace{0.5 cm}
+\uncover<2->{Only late-stage HEP analysis could fit this model, not AOD.}
+
+\vspace{0.5 cm}
+\uncover<3->{General physics analysis requires arbitrary-length lists of objects: e.g.\ events containing jets containing tracks containing hits.}
+
+\vspace{0.5 cm}
+\uncover<4->{But frameworks that let the user write object-oriented code are inefficient for queries.}
+\end{frame}
+
+\begin{frame}{Illustration}
+\vspace{0.5 cm}
+
+\large \textcolor{darkblue}{\underline{Query: fill a histogram with jet $p_T$ of all jets.}}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.5}
+\small
+\begin{tabular}{r l}
+\large 0.018 MHz & \large custom CMSSW EDAnalyzer (single-threaded C++) \\
+\uncover<5->{\large 0.03 MHz & \large load all 95 jet branches in ROOT} \\
+\uncover<4->{\large 2.8 MHz & \large load only jet $p_T$ branch in ROOT} \\
+\uncover<3->{\large 12 MHz & \large allocate C++ objects on heap, fill, delete} \\
+\uncover<2->{\large 31 MHz & \large allocate C++ objects on stack, fill histogram} \\
+\large 250 MHz & \large minimal ``for'' loop (single-threaded C) \\
+\end{tabular}
+\end{center}
+
+\uncover<6->{\large \textcolor{darkblue}{Four orders of magnitude in performance lost to provide an object-oriented view of the jets, with all attributes filled.}}
+\end{frame}
+
+\begin{frame}[fragile]{Alternative}
+\vspace{0.5 cm}
+Instead of deserializing data into objects, translate the code into loops over raw arrays.
+
+\vspace{0.25 cm}
+\textcolor{darkblue}{Turn ``event'' and ``jet'' objects:}
+
+\scriptsize
+\begin{minted}{python}
+histogram = numpy.zeros(100, dtype=numpy.int32)
+
+def fcn(roottree, histogram):
+    for event in roottree:
+        for jet in event.jets:
+            bin = int(jet.pt)
+            if bin >= 0 and bin < 100:
+                histogram[bin] += 1
+\end{minted}
+
+\vspace{0.25 cm}
+\textcolor{darkblue}{\normalsize into ``event'' and ``jet'' array indexes:}
+
+\scriptsize
+\begin{minted}{python}
+def fcn(eventoffset, jetoffset, jetptdata, histogram):
+    for event in range(eventoffset[1]):
+        for jet in range(jetoffset[event], jetoffset[event + 1]):
+            bin = int(jetptdata[jet])
+            if bin >= 0 and bin < 100:
+                histogram[bin] += 1
+\end{minted}
+
+\end{frame}
+
+\begin{frame}{}
+
+\end{frame}
+
+
+
 
 %% the dream: motivation
 
