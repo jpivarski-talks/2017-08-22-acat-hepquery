@@ -22,6 +22,7 @@
 \usepackage{minted}
 \usepackage{ulem}
 \usepackage{xpatch}
+\usepackage{fancyvrb}
 
 \xdefinecolor{darkblue}{rgb}{0.1,0.1,0.7}
 \xdefinecolor{darkgreen}{rgb}{0,0.5,0}
@@ -256,7 +257,7 @@ def fcn(roottree, histogram):
 \end{minted}
 
 \vspace{0.25 cm}
-\textcolor{darkblue}{\normalsize into ``event'' and ``jet'' array indexes:}
+\textcolor{darkblue}{\normalsize into indexes of ``eventoffset'', ``jetoffset'', ``jetptdata'' arrays:}
 
 \scriptsize
 \begin{minted}{python}
@@ -270,10 +271,68 @@ def fcn(eventoffset, jetoffset, jetptdata, histogram):
 
 \end{frame}
 
-\begin{frame}{}
+\begin{frame}[fragile]{Result}
+\hspace{-0.75 cm}\begin{minipage}{\linewidth}\scriptsize
+\begin{Verbatim}[commandchars=\\\{\}]
+ 97% done; reading: 262.094 MB/s, computing: 66.308 MHz (...TeV_2_7.root)
+ 98% done; reading: 337.129 MB/s, computing: 67.579 MHz (...TeV_2_8.root)
+100% done; reading: 232.974 MB/s, computing: 67.133 MHz (...TeV_2_9.root)
+========================================================================================
+total time spent compiling: 0.353 sec
+             opening files: 0.078 sec
+              reading data: 0.238 sec (46.302 MB --> 194.745 MB/s)
+                 computing: 0.061 sec (5389283 entries --> \textcolor{red}{87.645 MHz})
 
+      from start to finish: 0.734 sec
+\end{Verbatim}
+\end{minipage}
+
+\vspace{1 cm}
+Object oriented processes can be computed at \textcolor{red}{$\mathcal{O}(\mbox{10--100 MHz})$}.
+
+\vspace{0.25 cm}
+Disk reads and RAM strides are more sequential.
+
+\vspace{0.25 cm}
+Only columns used in the code are actually loaded: an object's attributes only exist if they're used.
 \end{frame}
 
+%% \begin{frame}[fragile]{More complex example}
+%% \vspace{0.5 cm}
+%% This straightforward nested loop would be very difficult to express in SQL.
+
+%% \vspace{0.25 cm}
+%% The ``event'', ``mu1'', and ``mu2'' objects are replaced with array lookups at runtime.
+
+%% \scriptsize
+%% \begin{minted}{python}
+%% for event in roottree:
+%%     for i in range(len(event.muons)):      # don't repeat muons!
+%%         for j in range(i + 1, len(event.muons)):
+%%             mu1 = event.muons[i]
+%%             mu2 = event.muons[j]
+%%             mass = sqrt(2 * mu1.pt * mu2.pt *
+%%                         (cosh(mu1.eta - mu2.eta) - cos(mu1.phi - mu2.phi)))
+%% \end{minted}
+%% \end{frame}
+
+\begin{frame}{How it fits together}
+Our PLUR library\footnotemark[1] puts {\bf P}rimitive, {\bf L}ist, {\bf U}nion, and {\bf R}ecord data into flat arrays and translates Python code to do array lookups.
+
+\vspace{0.5 cm}
+The translated Python can then be compiled by Numba\footnotemark[2] (Python compiler for numerical algorithms) into fast bytecode.
+
+\vspace{0.5 cm}
+Our contributions to ROOT\footnotemark[3] allow ROOT TBranch data to be rapidly viewed as Numpy arrays.
+
+\vspace{0.5 cm}
+This is being gathered into a HEPQuery application\footnotemark[4] to provide a query service. See README for more complex examples.
+
+\footnotetext[1]{\textcolor{blue}{\url{https://github.com/diana-hep/plur}}}
+\footnotetext[2]{\textcolor{blue}{\url{http://numba.pydata.org/}}}
+\footnotetext[3]{\textcolor{blue}{\url{https://jpivarski.github.io/devlog-tbranch-numpy/}}}
+\footnotetext[4]{\textcolor{blue}{\url{https://github.com/diana-hep/hepquery/}}}
+\end{frame}
 
 
 
