@@ -225,7 +225,7 @@ SQL-like query engines are optimized for what we'd call a ``flat ntuple analysis
 \renewcommand{\arraystretch}{1.5}
 \small
 \begin{tabular}{r l}
-\large 0.018 MHz & \large custom CMSSW EDAnalyzer (single-threaded C++) \\
+\large 0.018 MHz & \large full CMS framework (single-threaded C++) \\
 \uncover<5->{\large 0.029 MHz & \large load all 95 jet branches in ROOT} \\
 \uncover<4->{\large 2.8 MHz & \large load jet $p_T$ branch (and no others) in ROOT} \\
 \uncover<3->{\large 12 MHz & \large allocate C++ objects on heap, fill, delete} \\
@@ -239,10 +239,12 @@ SQL-like query engines are optimized for what we'd call a ``flat ntuple analysis
 
 \begin{frame}[fragile]{Alternative}
 \vspace{0.5 cm}
+\fbox{\begin{minipage}{\linewidth}
 Instead of deserializing data into objects, translate the code into loops over raw arrays.
+\end{minipage}}
 
 \vspace{0.25 cm}
-\textcolor{darkblue}{\underline{Turn ``event'' and ``jet'' objects:}}
+\textcolor{darkblue}{\underline{User writes code with ``event'' and ``jet'' objects:}}
 
 \scriptsize
 \begin{minted}{python}
@@ -257,7 +259,7 @@ def fcn(roottree, histogram):
 \end{minted}
 
 \vspace{0.25 cm}
-\textcolor{darkblue}{\normalsize \underline{into indexes over ``events'', ``jets'', ``jetpt'' arrays:}}
+\textcolor{darkblue}{\normalsize \underline{which are translated into indexes over raw arrays:}}
 
 \scriptsize
 \begin{minted}{c++}
@@ -291,7 +293,7 @@ total time spent compiling: 0.353 sec
 \end{minipage}
 
 \vspace{1 cm}
-Object-oriented calculations can be performed at \textcolor{red}{$\mathcal{O}(\mbox{10--100 MHz})$}.
+Object-oriented calculations can now be performed \mbox{at \textcolor{red}{$\mathcal{O}(\mbox{100 MHz})$}.\hspace{-0.5 cm}}
 
 \vspace{0.25 cm}
 Disk reads and RAM strides are more sequential than if they were chasing pointers.
@@ -345,7 +347,7 @@ This is being gathered into a HEPQuery application\footnotemark[4] to provide a 
 
 \begin{frame}{Challenges}
 \vspace{0.5 cm}
-Two types of query:
+\textcolor{darkblue}{Two types of query:}
 \begin{itemize}
 \item transform an input dataset into an output dataset, both of which live on the server;
 \item aggregate an input dataset into histograms, which are returned to the user's terminal.
@@ -370,7 +372,7 @@ To track ongoing jobs, accumulate partial histograms, and know where to find cac
 \hfill \includegraphics[height=1.2 cm]{zookeeper.png} \includegraphics[height=1.2 cm]{mongodb.png}
 
 \vspace{-0.5 cm}
-\textcolor{darkblue}{Use third-party tools!}
+\textcolor{darkblue}{\large Use third-party tools!}
 \begin{itemize}
 \item Apache Zookeeper for rapidly changing task assignment.
 \item MongoDB for JSON-structured partial aggregations.
@@ -380,7 +382,7 @@ To track ongoing jobs, accumulate partial histograms, and know where to find cac
 \end{uncoverenv}
 
 \vspace{0.5 cm}
-\uncover<3->{We may not be able to find exactly what we want on the open-source market, but we can find most of the pieces.}
+\uncover<3->{Although we can't find exactly what we want on the open-source market, we're finding most of the pieces.}
 \end{frame}
 
 \begin{frame}{Prototype}
@@ -404,7 +406,7 @@ Thanat Jatuphattharachat (CERN summer student) project: explore third party tool
 \begin{frame}{Femtocode}
 \vspace{0.5 cm}
 
-Femtocode is a mini-language based on Python, but with sufficient limitations to allow SQL-like query planning.
+Femtocode\footnotemark[1] is a mini-language based on Python, but with sufficient limitations to allow SQL-like query planning.
 
 \vspace{0.25 cm}
 \begin{itemize}\setlength{\itemsep}{0.25 cm}
@@ -415,6 +417,8 @@ Femtocode is a mini-language based on Python, but with sufficient limitations to
 
 \vspace{0.25 cm}
 But these are all ``2.0'' features.
+
+\footnotetext[1]{\textcolor{blue}{\url{https://github.com/diana-hep/femtocode/}}}
 \end{frame}
 
 \begin{frame}
