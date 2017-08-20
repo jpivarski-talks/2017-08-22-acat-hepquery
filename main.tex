@@ -33,6 +33,13 @@
 \definecolor{commentgreen}{rgb}{0,0.6,0}
 \definecolor{stringmauve}{rgb}{0.58,0,0.82}
 
+\definecolor{results1}{HTML}{3366CC}
+\definecolor{results2}{HTML}{DC3912}
+\definecolor{results3}{HTML}{FF9900}
+\definecolor{results4}{HTML}{109618}
+\definecolor{results5}{HTML}{D800D8}
+\definecolor{results6}{HTML}{2293DD}
+
 \lstset{ %
   backgroundcolor=\color{white},      % choose the background color
   basicstyle=\ttfamily\small,         % size of fonts used for the code
@@ -92,14 +99,14 @@
 
 \begin{frame}{The dream}
 \vspace{0.5 cm}
-LHC experiments are pretty efficient at data handling up to Analysis Object Datasets (AODs), but AODs to final plots is a wild west of hacky scripts, unnecessary copying, and wasted resources.
+LHC experiments centrally manage data from readout to Analysis Object Datasets (AODs), but from AODs to final plots, every physics group makes their own data reduction chain, often copying the data several times.
 
 \vspace{0.2 cm}
 \only<1>{\includegraphics[width=\linewidth]{stack-of-files.png}}\only<2>{\includegraphics[width=\linewidth]{stack-of-files-2.png}}
 
 \vspace{0.5 cm}
 \begin{uncoverenv}<2>
-Ideally, we'd want to turn AOD directly into plots, quickly enough for interactive analysis (seconds per scan at most).
+It would be ideal if physicists could directly turn AOD into plots, quickly enough for interactive analysis (seconds per scan at most).
 \end{uncoverenv}
 \end{frame}
 
@@ -107,10 +114,10 @@ Ideally, we'd want to turn AOD directly into plots, quickly enough for interacti
 \large
 \vspace{0.5 cm}
 \begin{itemize}\setlength{\itemsep}{0.5 cm}
-\item Users would plot the data before doing anything else.
+\item Users would plot the data before making other decisions.
 
 \vspace{0.2 cm}
-\textcolor{gray}{\normalsize (Skims for maximum likelihood fits, etc.\ should be possible, but can be more streamlined {\it after} exploratory plotting.)}
+\textcolor{gray}{\normalsize (Even if they do need skims for maximum likelihood fits, etc, these can be more streamlined {\it after} exploratory plotting.)}
 
 \vspace{-0.2 cm}
 \item Focus on physics and statistical issues, not data handling.
@@ -207,7 +214,7 @@ Apache Drill comes closest to fitting our needs, but it's
 SQL-like query engines are optimized for what we'd call a ``flat ntuple analysis''--- rectangular table of numbers, sliced, filtered, aggregated, and joined.
 
 \vspace{0.5 cm}
-\uncover<2->{Only late-stage HEP analysis could fit this model, not AOD.}
+\uncover<2->{Only late-stage HEP analysis fits this model, not AOD.}
 
 \vspace{0.5 cm}
 \uncover<3->{General physics analysis requires arbitrary-length lists of objects: e.g.\ events containing jets containing tracks containing hits.}
@@ -275,31 +282,49 @@ void fcn(int* events, int* jets, float* jetptdata, int* histogram) {
 
 \end{frame}
 
-\begin{frame}[fragile]{Result}
+%% \begin{frame}[fragile]{Result}
+%% \vspace{0.5 cm}
+%% \hspace{-0.75 cm}\begin{minipage}{\linewidth}\scriptsize
+%% \begin{Verbatim}[commandchars=\\\{\}]
+%%  97% done; reading: 262.094 MB/s, computing: 66.308 MHz (...TeV_2_7.root)
+%%  98% done; reading: 337.129 MB/s, computing: 67.579 MHz (...TeV_2_8.root)
+%% 100% done; reading: 232.974 MB/s, computing: 67.133 MHz (...TeV_2_9.root)
+%% ========================================================================================
+%% total time spent compiling: 0.353 sec
+%%              opening files: 0.078 sec
+%%               reading data: 0.238 sec (46.302 MB --> 194.745 MB/s)
+%%                  computing: 0.061 sec (5389283 entries --> \textcolor{red}{87.645 MHz})
+
+%%       from start to finish: 0.734 sec
+%% \end{Verbatim}
+%% \end{minipage}
+
+%% \vspace{1 cm}
+%% Object-oriented calculations can now be performed \mbox{at \textcolor{red}{$\mathcal{O}(\mbox{100 MHz})$}.\hspace{-0.5 cm}}
+
+%% \vspace{0.25 cm}
+%% Disk reads and RAM strides are more sequential than if they were chasing pointers.
+
+%% \vspace{0.25 cm}
+%% No need for ``schema evolution'' because data \mbox{never get deserialized.\hspace{-0.25 cm}} Different versions of a dataset can share column arrays, reducing disk space of revisions. Popular columns should be cached.
+%% \end{frame}
+
+\begin{frame}{Results}
 \vspace{0.5 cm}
-\hspace{-0.75 cm}\begin{minipage}{\linewidth}\scriptsize
-\begin{Verbatim}[commandchars=\\\{\}]
- 97% done; reading: 262.094 MB/s, computing: 66.308 MHz (...TeV_2_7.root)
- 98% done; reading: 337.129 MB/s, computing: 67.579 MHz (...TeV_2_8.root)
-100% done; reading: 232.974 MB/s, computing: 67.133 MHz (...TeV_2_9.root)
-========================================================================================
-total time spent compiling: 0.353 sec
-             opening files: 0.078 sec
-              reading data: 0.238 sec (46.302 MB --> 194.745 MB/s)
-                 computing: 0.061 sec (5389283 entries --> \textcolor{red}{87.645 MHz})
+Four sample queries (see backup) using ROOT \textcolor{results1}{without dropping branches}, \textcolor{results2}{with {\tt SetBranchStatus}}, \textcolor{results3}{with a slimmer file}, \textcolor{results4}{with BulkIO and transformed Python code}.
 
-      from start to finish: 0.734 sec
-\end{Verbatim}
-\end{minipage}
+\begin{center}
+\includegraphics[width=0.65\linewidth]{root-and-plur.pdf}
+\end{center}
+\end{frame}
 
-\vspace{1 cm}
-Object-oriented calculations can now be performed \mbox{at \textcolor{red}{$\mathcal{O}(\mbox{100 MHz})$}.\hspace{-0.5 cm}}
+\begin{frame}{Results}
+\vspace{0.5 cm}
+Four sample queries (see backup) using \textcolor{results4}{ROOT with BulkIO and transformed Python code} (same as previous page), \textcolor{results5}{raw arrays on SSD disk}, \textcolor{results6}{raw arrays in memory}.
 
-\vspace{0.25 cm}
-Disk reads and RAM strides are more sequential than if they were chasing pointers.
-
-\vspace{0.25 cm}
-No need for ``schema evolution'' because data \mbox{never get deserialized.\hspace{-0.25 cm}} Different versions of a dataset can share column arrays, reducing disk space of revisions. Popular columns should be cached.
+\begin{center}
+\includegraphics[width=0.65\linewidth]{physical-media.pdf}
+\end{center}
 \end{frame}
 
 %% \begin{frame}[fragile]{More complex example}
