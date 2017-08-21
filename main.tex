@@ -114,7 +114,7 @@ It would be ideal if physicists could directly turn AOD into plots, quickly enou
 \large
 \vspace{0.5 cm}
 \begin{itemize}\setlength{\itemsep}{0.5 cm}
-\item Users would plot the data before making other decisions.
+\item Users could plot the data before deciding what to keep.
 
 \vspace{0.2 cm}
 \textcolor{gray}{\normalsize (Even if they do need skims for maximum likelihood fits, etc, these can be more streamlined {\it after} exploratory plotting.)}
@@ -223,7 +223,7 @@ SQL-like query engines are optimized for what we'd call a ``flat ntuple analysis
 \uncover<4->{But frameworks that create physics objects at runtime would be slow to process as queries.}
 \end{frame}
 
-\begin{frame}{Illustration}
+\begin{frame}{Illustration with a microbenchmark}
 \vspace{0.5 cm}
 
 \large \textcolor{darkblue}{\underline{Query: fill a histogram with jet $p_T$ of all jets.}}
@@ -237,18 +237,18 @@ SQL-like query engines are optimized for what we'd call a ``flat ntuple analysis
 \uncover<4->{\large 2.8 MHz & \large load jet $p_T$ branch (and no others) in ROOT} \\
 \uncover<3->{\large 12 MHz & \large allocate C++ objects on heap, fill, delete} \\
 \uncover<2->{\large 31 MHz & \large allocate C++ objects on stack, fill histogram} \\
-\large 250 MHz & \large minimal ``for'' loop (single-threaded C) \\
+\large 250 MHz & \large minimal ``for'' loop in memory (single-threaded C) \\
 \end{tabular}
 \end{center}
 
 \uncover<6->{\large \textcolor{darkblue}{Four orders of magnitude in performance lost to provide an object-oriented view of the jets, with all attributes filled.}}
 \end{frame}
 
-\begin{frame}[fragile]{Alternative}
+\begin{frame}[fragile]{Alternative: FIXME(add arxiv reference)}
 \vspace{0.5 cm}
-\fbox{\begin{minipage}{\linewidth}
-Instead of deserializing data into objects, translate the code into loops over raw arrays.
-\end{minipage}}
+\textcolor{darkorange}{\fbox{\begin{minipage}{\linewidth}
+\bf Instead of deserializing data into objects, translate the code into loops over raw arrays.
+\end{minipage}}}
 
 \vspace{0.25 cm}
 \textcolor{darkblue}{\underline{User writes code with ``event'' and ``jet'' objects:}}
@@ -309,18 +309,18 @@ void fcn(int* events, int* jets, float* jetptdata, int* histogram) {
 %% No need for ``schema evolution'' because data \mbox{never get deserialized.\hspace{-0.25 cm}} Different versions of a dataset can share column arrays, reducing disk space of revisions. Popular columns should be cached.
 %% \end{frame}
 
-\begin{frame}{Results}
+\begin{frame}{Performance on real queries}
 \vspace{0.5 cm}
-Four sample queries (see backup) using ROOT \textcolor{results1}{without dropping branches}, \textcolor{results2}{with {\tt SetBranchStatus}}, \textcolor{results3}{with a slimmer file}, \textcolor{results4}{with BulkIO and transformed Python code}.
+Four sample queries (see backup) using ROOT \textcolor{results1}{1.~without dropping branches}, \textcolor{results2}{2.~dropping branches ({\tt\small SetBranchStatus})}, \textcolor{results3}{3.~using a slimmer file}, \textcolor{results4}{4.~with BulkIO and transformed Python code}.
 
 \begin{center}
 \includegraphics[width=0.65\linewidth]{root-and-plur.pdf}
 \end{center}
 \end{frame}
 
-\begin{frame}{Results}
+\begin{frame}{Performance on real queries}
 \vspace{0.5 cm}
-Four sample queries (see backup) using \textcolor{results4}{ROOT with BulkIO and transformed Python code} (same as previous page), \textcolor{results5}{raw arrays on SSD disk}, \textcolor{results6}{raw arrays in memory}.
+Four sample queries (see backup) using \textcolor{results4}{4.~ROOT with BulkIO and transformed Python code} (copied from last page), \textcolor{results5}{5.~raw arrays on SSD disk}, \textcolor{results6}{6.~raw arrays in memory}.
 
 \begin{center}
 \includegraphics[width=0.65\linewidth]{physical-media.pdf}
@@ -353,14 +353,14 @@ Our PLUR library\footnotemark[1] puts {\bf P}rimitive, {\bf L}ist, {\bf U}nion, 
 The translated Python is then compiled by Numba\footnotemark[2] (Python compiler for numerical algorithms) into fast bytecode.
 
 \vspace{0.5 cm}
-Our contributions to ROOT\footnotemark[3] allow ROOT TBranch data to be rapidly viewed as Numpy arrays ($10\times$ faster than root\_numpy).
+BulkIO contributions to ROOT\footnotemark[3] allow ROOT TBranch data to be rapidly viewed as Numpy arrays ($10\times$ faster than root\_numpy).
 
 \vspace{0.5 cm}
 This is being gathered into a HEPQuery application\footnotemark[4] to provide a query service. See the READMEs for more realistic examples.
 
 \footnotetext[1]{\textcolor{blue}{\url{https://github.com/diana-hep/plur}}}
 \footnotetext[2]{\textcolor{blue}{\url{http://numba.pydata.org/}}}
-\footnotetext[3]{\textcolor{blue}{\url{https://jpivarski.github.io/devlog-tbranch-numpy/}}}
+\footnotetext[3]{\textcolor{blue}{\href{https://github.com/bbockelm/root/tree/root-bulkapi-fastread-v2}{\tt https://github.com/bbockelm/root/ \\ \hfill tree/root-bulkapi-fastread-v2}}}
 \footnotetext[4]{\textcolor{blue}{\url{https://github.com/diana-hep/hepquery/}}}
 \end{frame}
 
@@ -462,6 +462,128 @@ But these are all ``2.0'' features.
 \item Columnar data granularity has useful consequences.
 \item Prototyping distributed architecture, relying on third-party components wherever possible.
 \end{itemize}
+\end{frame}
+
+\begin{frame}
+\begin{center}
+\huge \textcolor{darkblue}{Backup}
+\end{center}
+\end{frame}
+
+\begin{frame}[fragile]{Sample queries}
+\vspace{0.5 cm}
+\scriptsize
+
+\begin{columns}
+\column{0.45\linewidth}
+\underline{{\bf max p$_{\mbox{\tiny T}}$} in Python}
+\begin{minted}{python}
+maximum = 0.0
+for muon in event.Muon:
+  if muon.pt > maximum:
+    maximum = muon.pt
+fill_histogram(maximum)
+\end{minted}
+\column{0.5\linewidth}
+\underline{{\bf max p$_{\mbox{\tiny T}}$} in C++}
+\begin{minted}{c++}
+float maximum = 0.0;
+for (i=0; i < muons.size(); i++)
+  if (muons[i]->pt > maximum)
+    maximum = muons[i]->pt;
+fill_histogram(maximum);
+\end{minted}
+\end{columns}
+
+\vfill
+\begin{columns}
+\column{0.45\linewidth}
+\underline{{\bf eta of best by p$_{\mbox{\tiny T}}$} in Python}
+\begin{minted}{python}
+maximum = 0.0
+best = -1
+for muon in event.muons:
+  if muon.pt > maximum:
+    maximum = muon.pt
+    best = muon
+if best != -1:
+  fill_histogram(best.eta)
+\end{minted}
+\column{0.5\linewidth}
+\underline{{\bf eta of best by p$_{\mbox{\tiny T}}$} in C++}
+\begin{minted}{c++}
+float maximum = 0.0;
+Muon* best = nullptr;
+for (i=0; i < muons.size(); i++)
+  if (muons[i]->pt > maximum) {
+    maximum = muons[i]->pt;
+    best = muon; }
+if (best != nullptr)
+  fill_histogram(best->eta);
+\end{minted}
+\end{columns}
+\end{frame}
+
+\begin{frame}[fragile]{Sample queries}
+\vspace{0.5 cm}
+\scriptsize
+
+\begin{columns}
+\column{0.45\linewidth}
+\underline{{\bf mass of pairs} in Python}
+\begin{minted}{python}
+n = len(event.muons)
+for i in range(n):
+  for j in range(i+1, n):
+    m1 = event.muons[i]
+    m2 = event.muons[j]
+    mass = sqrt(
+      2*m1.pt*m2.pt*(
+      cosh(m1.eta - m2.eta) -
+      cos(m1.phi - m2.phi)))
+    fill_histogram(mass)
+\end{minted}
+\column{0.5\linewidth}
+\underline{{\bf mass of pairs} in C++}
+\begin{minted}{c++}
+int n = muons.size();
+for (i=0; i < n; i++)
+  for (j=i+1; j < n; j++) {
+    Muon* m1 = muons[i];
+    Muon* m2 = muons[j];
+    double mass = sqrt(
+      2*m1->pt*m2->pt*(
+      cosh(m1->eta - m2->eta) -
+      cos(m1->phi - m2->phi)));
+    fill_histogram(mass); }
+\end{minted}
+\end{columns}
+
+\vfill
+\begin{columns}
+\column{0.45\linewidth}
+\underline{{\bf p$_{\mbox{\tiny T}}$ sum of pairs} in Python}
+\begin{minted}{python}
+n = len(event.muons)
+for i in range(n):
+  for j in range(i+1, n):
+    m1 = event.muons[i]
+    m2 = event.muons[j]
+    s = m1.pt + m2.pt
+    fill_histogram(s)
+\end{minted}
+\column{0.5\linewidth}
+\underline{{\bf p$_{\mbox{\tiny T}}$ sum of pairs} in C++}
+\begin{minted}{c++}
+int n = muons.size();
+for (i=0; i < n; i++)
+  for (j=i+1; j < n; j++) {
+    Muon* m1 = muons[i];
+    Muon* m2 = muons[j];
+    double s = m1->pt + m2->pt;
+    fill_histogram(s); }
+\end{minted}
+\end{columns}
 \end{frame}
 
 %% the dream: motivation
