@@ -122,7 +122,7 @@ Wouldn't it be nice if physicists could directly turn AOD into plots, quickly en
 \vspace{-0.2 cm}
 \item Focus on physics and statistical issues, not data handling.
 \item Centralization facilitates provenance and reproducibility.
-\item Shared CPU, disk, and memory is more efficient.
+\item Shared CPU, disk, and memory can be more efficient.
 \item Small institutions would not be ``priced out'' of analysis for lack of resources to copy and locally process the data.
 \end{itemize}
 \end{frame}
@@ -214,10 +214,10 @@ Apache Drill comes closest to fitting our needs, but it's
 SQL-like query engines are optimized for what we'd call a ``flat ntuple analysis''--- rectangular table of numbers, sliced, filtered, aggregated, and joined.
 
 \vspace{0.5 cm}
-\uncover<2->{Only late-stage HEP analysis fits this model, not AOD.}
+\uncover<2->{Only some late-stage HEP analyses fit this model, not AOD.}
 
 \vspace{0.5 cm}
-\uncover<3->{General physics analysis requires arbitrary-length lists of objects: e.g.\ events containing jets containing tracks containing hits.}
+\uncover<3->{In general, physics analysis requires arbitrary-length lists of objects: e.g.\ events containing jets containing tracks containing hits.}
 
 \vspace{0.5 cm}
 \uncover<4->{But frameworks that create physics objects at runtime would be slow to process as queries.}
