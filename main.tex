@@ -97,16 +97,16 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\begin{frame}{The dream}
+\begin{frame}{The dream\ldots}
 \vspace{0.5 cm}
-LHC experiments centrally manage data from readout to Analysis Object Datasets (AODs), but from AODs to final plots, every physics group makes their own data reduction chain, often copying the data several times.
+LHC experiments centrally manage data from readout to Analysis Object Datasets (AODs), but the next stage, from AODs to final plots, is handled separately by each physics group, often copying the data several times.
 
 \vspace{0.2 cm}
 \only<1>{\includegraphics[width=\linewidth]{stack-of-files.png}}\only<2>{\includegraphics[width=\linewidth]{stack-of-files-2.png}}
 
 \vspace{0.5 cm}
 \begin{uncoverenv}<2>
-It would be ideal if physicists could directly turn AOD into plots, quickly enough for interactive analysis (seconds per scan at most).
+Wouldn't it be nice if physicists could directly turn AOD into plots, quickly enough for interactive analysis (seconds per scan at most)?
 \end{uncoverenv}
 \end{frame}
 
@@ -232,7 +232,7 @@ SQL-like query engines are optimized for what we'd call a ``flat ntuple analysis
 \renewcommand{\arraystretch}{1.5}
 \small
 \begin{tabular}{r l}
-\large 0.018 MHz & \large full CMS framework (single-threaded C++) \\
+\large 0.018 MHz & \large full framework (CMSSW, single-threaded C++) \\
 \uncover<5->{\large 0.029 MHz & \large load all 95 jet branches in ROOT} \\
 \uncover<4->{\large 2.8 MHz & \large load jet $p_T$ branch (and no others) in ROOT} \\
 \uncover<3->{\large 12 MHz & \large allocate C++ objects on heap, fill, delete} \\
@@ -247,7 +247,7 @@ SQL-like query engines are optimized for what we'd call a ``flat ntuple analysis
 \begin{frame}[fragile]{Alternative}
 \vspace{0.5 cm}
 \textcolor{darkorange}{\fbox{\begin{minipage}{\linewidth}
-\bf Instead of deserializing data into objects, translate the code into loops over raw arrays.
+\bf Instead of turning TBranch data into objects, translate the code into loops over the raw TBranch arrays (``BulkIO'').
 \end{minipage}}}
 
 \vspace{0.25 cm}
@@ -310,8 +310,8 @@ void fcn(int* events, int* jets, float* jetptdata, int* histogram) {
 %% \end{frame}
 
 \begin{frame}{Performance on real queries}
-\vspace{0.5 cm}
-Four sample queries (see backup) using ROOT \textcolor{results1}{1.~without dropping branches}, \textcolor{results2}{2.~dropping branches ({\tt\small SetBranchStatus})}, \textcolor{results3}{3.~using a slimmer file}, \textcolor{results4}{4.~with BulkIO and transformed Python code}.
+\vspace{0.35 cm}
+Four sample queries (see backup) using ROOT \textcolor{results1}{1.~without dropping branches}, \textcolor{results2}{2.~dropping branches ({\tt\small SetBranchStatus})}, \textcolor{results3}{3.~using a slimmer file}, \textcolor{results4}{\fbox{4.~with BulkIO and transformed Python code}}.
 
 \begin{center}
 \includegraphics[width=0.65\linewidth]{root-and-plur.pdf}
@@ -319,8 +319,8 @@ Four sample queries (see backup) using ROOT \textcolor{results1}{1.~without drop
 \end{frame}
 
 \begin{frame}{Performance on real queries}
-\vspace{0.5 cm}
-Four sample queries (see backup) using \textcolor{results4}{4.~same ROOT with BulkIO and transformed Python code}, \textcolor{results5}{5.~raw arrays on SSD disk}, \textcolor{results6}{6.~raw arrays in memory}.
+\vspace{0.35 cm}
+Four sample queries (see backup) using \textcolor{results4}{4.~same ROOT with BulkIO and transformed Python code}, \textcolor{results5}{5.~raw arrays on SSD disk}, \textcolor{results6}{6.~raw arrays in memory}. (Caching system for query server.)
 
 \begin{center}
 \includegraphics[width=0.65\linewidth]{physical-media.pdf}
@@ -367,30 +367,36 @@ This is being gathered into a HEPQuery application\footnotemark[4] to provide a 
 \begin{frame}
 \begin{center}
 \huge \textcolor{darkblue}{Distributed processing}
+
+\vspace{0.75 cm}
+\normalsize\textcolor{gray}{(10's of MHz rates on previous page were all single-threaded)}
 \end{center}
 \end{frame}
 
-\begin{frame}{Challenges}
-\vspace{0.5 cm}
-\textcolor{darkblue}{Two types of query:}
-\begin{itemize}
-\item transform an input dataset into an output dataset, both of which live on the server;
-\item aggregate an input dataset into histograms, which are returned to the user's terminal.
-\end{itemize}
+\begin{frame}{Challenges: not a standard batch job}
+%% \vspace{0.5 cm}
+%% \textcolor{darkblue}{Two types of query:}
+%% \begin{itemize}
+%% \item transform an input dataset into an output dataset, both of which live on the server;
+%% \item aggregate an input dataset into histograms, which are returned to the user's terminal.
+%% \end{itemize}
 
 \vspace{0.5 cm}
-\uncover<2->{Aggregations require two phases: splitting into subtasks (map) and combining partial results (reduce). These must be coordinated.}
+\uncover<1->{Overhead latency should be small enough for interactive use (less than a second).}
 
-\vspace{0.5 cm}
+\vspace{0.75 cm}
+\uncover<2->{Query-to-plot requires two phases: splitting into subtasks (map) and combining partial results (reduce). These must be coordinated.}
+
+\vspace{0.75 cm}
 \uncover<3->{Input data should be cached with column-granularity.}
 
-\vspace{0.5 cm}
+\vspace{0.75 cm}
 \uncover<4->{Subtasks should {\it preferentially} be sent where their input data are cached (for data locality), but not {\it exclusively} (to elastically scale with dataset popularity).}
 \end{frame}
 
 \begin{frame}{Distributed state}
 \vspace{0.5 cm}
-To track ongoing jobs, accumulate partial histograms, and know where to find cached inputs, the query server will need to have mutable state.
+To track ongoing jobs, accumulate partial histograms, and know where to find cached inputs, the query server will need to have \textcolor{darkblue}{distributed, mutable state}.
 
 \vspace{0.3 cm}
 \begin{uncoverenv}<2->
@@ -446,7 +452,7 @@ Femtocode\footnotemark[1] is a mini-language based on Python, but with sufficien
 \end{itemize}
 
 \vspace{0.25 cm}
-\textcolor{darkblue}{But these are all ``2.0'' features.}
+\textcolor{darkblue}{\fbox{But these are all ``2.0'' features.}}
 
 \footnotetext[1]{\textcolor{blue}{\url{https://github.com/diana-hep/femtocode/}}}
 \end{frame}
