@@ -110,14 +110,14 @@ It would be ideal if physicists could directly turn AOD into plots, quickly enou
 \end{uncoverenv}
 \end{frame}
 
-\begin{frame}{Why this is a Good Thing}
+\begin{frame}{Why this would be a Good Thing}
 \large
 \vspace{0.5 cm}
 \begin{itemize}\setlength{\itemsep}{0.5 cm}
 \item Users could plot the data before deciding what to keep.
 
 \vspace{0.2 cm}
-\textcolor{gray}{\normalsize (Even if they do need skims for maximum likelihood fits, etc, these can be more streamlined {\it after} exploratory plotting.)}
+\textcolor{gray}{\normalsize (Even if they do need skims for maximum likelihood fits, etc, these can be better streamlined {\it after} exploratory plotting.)}
 
 \vspace{-0.2 cm}
 \item Focus on physics and statistical issues, not data handling.
@@ -320,7 +320,7 @@ Four sample queries (see backup) using ROOT \textcolor{results1}{1.~without drop
 
 \begin{frame}{Performance on real queries}
 \vspace{0.5 cm}
-Four sample queries (see backup) using \textcolor{results4}{4.~ROOT with BulkIO and transformed Python code} (copied from last page), \textcolor{results5}{5.~raw arrays on SSD disk}, \textcolor{results6}{6.~raw arrays in memory}.
+Four sample queries (see backup) using \textcolor{results4}{4.~same ROOT with BulkIO and transformed Python code}, \textcolor{results5}{5.~raw arrays on SSD disk}, \textcolor{results6}{6.~raw arrays in memory}.
 
 \begin{center}
 \includegraphics[width=0.65\linewidth]{physical-media.pdf}
@@ -422,6 +422,11 @@ Thanat Jatuphattharachat (CERN summer student) project: explore third party tool
 \footnotetext[2]{\textcolor{blue}{\url{https://github.com/JThanat/femto-mesos/tree/master}}}
 \end{frame}
 
+\begin{frame}{See Igor Mandrichenko's poster!}
+\vspace{0.5 cm}
+\mbox{\hspace{-0.5 cm}\includegraphics[width=1.1\linewidth]{igor.png}}
+\end{frame}
+
 \begin{frame}
 \begin{center}
 \huge \textcolor{darkblue}{Query language}
@@ -441,7 +446,7 @@ Femtocode\footnotemark[1] is a mini-language based on Python, but with sufficien
 \end{itemize}
 
 \vspace{0.25 cm}
-But these are all ``2.0'' features.
+\textcolor{darkblue}{But these are all ``2.0'' features.}
 
 \footnotetext[1]{\textcolor{blue}{\url{https://github.com/diana-hep/femtocode/}}}
 \end{frame}
@@ -460,6 +465,10 @@ But these are all ``2.0'' features.
 \item They're doing it in industry (but\ldots\ SQL and Java).
 \item Python-based queries can be computed at single-threaded rates of 10--100~MHz by translating code, rather than deserializing data.
 \item Columnar data granularity has useful consequences.
+
+\vspace{0.2 cm}
+\textcolor{darkblue}{\normalsize See Igor's poster!}
+
 \item Prototyping distributed architecture, relying on third-party components wherever possible.
 \end{itemize}
 \end{frame}
